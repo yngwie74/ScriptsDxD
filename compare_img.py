@@ -42,19 +42,12 @@ def are_versions_of_same(file1, file2):
     return clean_it(file1) == clean_it(file2)
 
 
-def are_already_processed(file1, file2, img_map):
-    key = file1 > file2 and (file1, file2) or (file2, file1)
-    return key in img_map
-
-
 def compare(img1, img2):
     # prnt_stderr('img2:%d' % len(img2))
     return 1 - ssim(img1, img2, data_range=img2.max() - img2.min())
 
 
 def main():
-    img_map = {}
-
     all_images = sorted(glob('*.[JjPp][PpNn][Gg]'))
     for file1 in all_images:
         if not path.exists(file1):
@@ -75,21 +68,14 @@ def main():
             if are_versions_of_same(file1, file2):
                 continue
 
-            if are_already_processed(file1, file2, img_map):
-                continue
-
-            # Asume que son completamente diferentes
-            score = 1.0
-
             try:
                 img2 = read_image(file2)
                 score = compare(img1, img2)
-                prnt_stderr('.')
             except:
                 prnt_stderr('!')
                 continue
 
-            img_map[key] = score
+            prnt_stderr('.')
 
             if score < _THRESHOLD:
                 print '%r\t=>\t%r' % (file1, file2)
