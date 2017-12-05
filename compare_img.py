@@ -47,8 +47,8 @@ def compare(img1, img2):
     return 1 - ssim(img1, img2, data_range=img2.max() - img2.min())
 
 
-def main():
-    all_images = sorted(glob('*.[JjPp][PpNn][Gg]'))
+def main(file_list):
+    all_images = sorted(file_list)
     for file1 in all_images:
         if not path.exists(file1):
             continue
@@ -84,9 +84,16 @@ def main():
 
 
 if __name__ == '__main__':
-    if len(sys.argv) != 3:
-        main()
-    else:
-        args = sys.argv[1:]
+    args = sys.argv[1:]
+    if len(args) == 0:
+        images = glob('*.[JjPp][PpNn][Gg]')
+        main(images)
+    elif len(args) == 1:
+        images = glob(args[0])
+        main(images)
+    elif len(args) == 2:
         images = map(read_image, args)
         print '%s/%s: %7.2f' % tuple(args + [compare(*images)])
+    else:
+        images = args
+        main(images)
