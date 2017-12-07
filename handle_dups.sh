@@ -1,7 +1,24 @@
 #!/bin/bash
 
+function debug() {
+    echo "-------------------------------------------------------------------------"
+    echo "---- $*"
+    echo "-------------------------------------------------------------------------"
+}
+
 function tabs_to_lines() {
     sed 's/\t/\n/g'
+}
+
+function safe_mv() {
+    if [[ "$1" != "$2" ]]; then
+        echo "$1 => $2"; 
+        mv "$1" "$2"
+    fi
+}
+
+function safe_rm() {
+    [[ -f "$1" ]] && rm "$1"
 }
 
 function exists_any() {
@@ -28,7 +45,9 @@ mv _sans_repeated_ _comps.txt
 #unix2dos _comps.txt 2> /dev/null
 
 _base="0"
-_all_versioned=1
+touch _all_have_ver_num_
+
+#[[ ! -f _all_have_ver_num_ ]]; debug "BEFORE: _all_have_ver_num_=$?"
 
 for i in `cat _repeated_`; do
     if [[ "0" = "${_base}" ]]; then
@@ -39,27 +58,30 @@ for i in `cat _repeated_`; do
     find . -maxdepth 1 -type f -iname "*${i}*.??g" -print | while IFS='' read -r f || [[ -n "$f" ]]; do
         [[ -f "$f" ]] || continue
 
-        grep -q -vE 'v[0-9]\.' <<< "$f" && _all_versioned=0
+        if grep -q -vE 'v[0-9]\.' <<< "$f"; then
+            safe_rm _all_have_ver_num_
+            #[[ ! -f _all_have_ver_num_ ]]; debug "CHANGE!: _all_have_ver_num_=$?"
+        fi
 
         n="${f/-/-${_base}.}"
-        if [[ "$f" != "$n" ]]; then
-            echo "mv $f => $n"
-            mv "$f" "$n"
-        fi
+        safe_mv "$f" "$n"
     done
 done
 
-if ! exists_any "*-${_base}.??g" && [[ 1 -eq $_all_versioned ]]; then
-    echo "All files versioned. Reverting renames:"
-    for f in *-${_base}.??????*; do
-        [[ -f "$f" ]] || continue
-        n="${f/-${_base}./-}"
-        if [[ "$f" != "$n" ]]; then
-            echo "mv $f => $n"; 
-            mv "$f" "$n"
-        fi
-    done
-    echo "done."
+#[[ ! -f _all_have_ver_num_ ]]; debug "AFTER: _all_have_ver_num_=$?"
+
+if [[ -f _all_have_ver_num_ ]]; then
+    echo "All files already versioned."
+    if ! exists_any "*-${_base}.??g"; then
+        echo "Reverting renames:"
+        for f in *-${_base}.??????*; do
+            [[ -f "$f" ]] || continue
+            n="${f/-${_base}./-}"
+            safe_mv "$f" "$n"
+        done
+        echo "done."
+    fi
 fi
 
-rm _repeated_
+safe_rm _repeated_
+safe_rm _all_have_ver_num_
