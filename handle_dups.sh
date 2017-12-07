@@ -6,15 +6,8 @@ function tabs_to_lines() {
 
 function exists_any() {
     local glob="$1"
-    local found=0
-    local f
-    for f in $glob; do
-        if [[ -f "$f" ]]; then
-            found=1
-            break
-        fi
-    done
-    [[ found -eq 0 ]] && return 1 || return 0
+    local lines=`find . -maxdepth 1 -type f -name "$glob" | wc -l`
+    [[ $lines -eq 0 ]] && return 1 || return 0
 }
 
 reps=`cut -f1 _comps.txt | sort | uniq -c | sort -nr | head -n1 | sed 's/^ \+//'`
@@ -32,7 +25,7 @@ grep $top_id _comps.txt | tabs_to_lines | sort -u | grep -f - _comps.txt | tabs_
 grep -v -f _repeated_ _comps.txt > _sans_repeated_
 mv _sans_repeated_ _comps.txt
 
-unix2dos _comps.txt 2> /dev/null
+#unix2dos _comps.txt 2> /dev/null
 
 _base="0"
 _all_versioned=1
@@ -43,7 +36,7 @@ for i in `cat _repeated_`; do
         _base=${i}
         continue
     fi
-    for f in *${i}*; do
+    find . -maxdepth 1 -type f -iname "*${i}*.??g" -print | while IFS='' read -r f || [[ -n "$f" ]]; do
         [[ -f "$f" ]] || continue
 
         grep -q -vE 'v[0-9]\.' <<< "$f" && _all_versioned=0
@@ -56,7 +49,7 @@ for i in `cat _repeated_`; do
     done
 done
 
-if ! exists_any "*-${base}.??g" && [[ 1 -eq $_all_versioned ]]; then
+if ! exists_any "*-${_base}.??g" && [[ 1 -eq $_all_versioned ]]; then
     echo "All files versioned. Reverting renames:"
     for f in *-${_base}.??????*; do
         [[ -f "$f" ]] || continue
