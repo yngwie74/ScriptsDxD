@@ -30,6 +30,7 @@ top_id=`cut -d' ' -f2 <<< $reps`
 
 if [[ $max_reps -lt 1 ]]; then
     echo No se encontraron mas IDs repetidos
+    safe_rm ${_DUPS_FILE}
     exit 0
 fi
 
