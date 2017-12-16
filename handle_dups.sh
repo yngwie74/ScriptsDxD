@@ -1,6 +1,6 @@
 #!/bin/bash
 
-_comps_file="comps.txt"
+_DUPS_FILE="_dups.txt"
 
 function tabs_to_lines() {
     sed 's/\t/\n/g'
@@ -23,7 +23,7 @@ function exists_any() {
     [[ $lines -eq 0 ]] && return 1 || return 0
 }
 
-reps=`cut -f1 ${_comps_file} | sort | uniq -c | sort -nr | head -n1 | sed 's/^ \+//'`
+reps=`cut -f1 ${_DUPS_FILE} | sort | uniq -c | sort -nr | head -n1 | sed 's/^ \+//'`
 
 max_reps=`cut -d' ' -f1 <<< $reps`
 top_id=`cut -d' ' -f2 <<< $reps`
@@ -33,12 +33,12 @@ if [[ $max_reps -lt 1 ]]; then
     exit 0
 fi
 
-grep $top_id ${_comps_file} | tabs_to_lines | sort -u | grep -f - ${_comps_file} | tabs_to_lines | sort -u > _repeated_
+grep $top_id ${_DUPS_FILE} | tabs_to_lines | sort -u | grep -f - ${_DUPS_FILE} | tabs_to_lines | sort -u > _repeated_
 
-grep -v -f _repeated_ ${_comps_file} > _sans_repeated_
-mv _sans_repeated_ ${_comps_file}
+grep -v -f _repeated_ ${_DUPS_FILE} > _sans_repeated_
+mv _sans_repeated_ ${_DUPS_FILE}
 
-#unix2dos ${_comps_file} 2> /dev/null
+#unix2dos ${_DUPS_FILE} 2> /dev/null
 
 _base="0"
 touch _all_have_ver_num_
