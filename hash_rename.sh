@@ -12,6 +12,11 @@ if [[ "$1" == "-r" ]]; then
     shift
 fi
 
+glob="*.[jp][pn]g"
+if [[ ! -z "$1" ]]; then
+    glob="$1"
+fi
+
 function pause() {
     local _char
     read -t$1 -N1 -p"$2" _char
@@ -72,7 +77,7 @@ function rename_files() {
 }
 
 while true; do
-    stat -t *.[jp][pn]g > .new.stat
+    find . -maxdepth 1 -type f -name "${glob}" -print0 | xargs -0 stat -t > .new.stat
 
     run=0
     if [[ -f .old.stat ]]; then
@@ -89,4 +94,4 @@ while true; do
     mv .new.stat .old.stat
 done
 
-find . -maxdepth 1 -type f \( -name ".*.stat" -or -name ".*.py" \) -delete
+find . -maxdepth 1 -type f -name ".*.stat" -delete
