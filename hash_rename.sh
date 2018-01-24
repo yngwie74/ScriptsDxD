@@ -77,7 +77,7 @@ function rename_files() {
 }
 
 while true; do
-    find . -maxdepth 1 -type f -name "${glob}" -print0 | xargs -0 stat -t > .new.stat
+    find . -maxdepth 1 -type f -name "${glob}" -print0 | xargs -r -0 stat -t > .new.stat
 
     run=0
     if [[ -f .old.stat ]]; then
