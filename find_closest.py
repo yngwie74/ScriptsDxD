@@ -6,13 +6,14 @@ import operator
 import re
 from glob import glob
 from os import path
+from itertools import islice
 
 from skimage.measure import compare_ssim as ssim
 from scipy.misc import imread, imresize
 from scipy import average
 
 _TARGET_SIZE = [160, 200]  # [640, 800]
-_THRESHOLD = 0.50
+_DEFAULT_THRESHOLD = 0.63
 
 
 def prnt_stderr(s):
@@ -30,7 +31,7 @@ def to_grayscale(arr):
 
 
 def read_image(filename):
-    # read images as 2D arrays (convert to grayscale for simplicity)
+    '''Read images as 2D arrays (convert to grayscale for simplicity)'''
     return imresize(to_grayscale(imread(filename).astype('float32')), _TARGET_SIZE,
                     interp='bicubic', mode='F')
 
@@ -47,9 +48,16 @@ def compare(img1, img2):
     return 1 - ssim(img1, img2, data_range=img2.max() - img2.min())
 
 
-def main(file1, others):
+def get_top_scores(score_dict, threshold, max_count):
+    sorted_by_value = sorted(score_dict.iteritems(), key=operator.itemgetter(1))
+    higher_to_lower = reversed(sorted_by_value)
+    filtered = ((key, value) for (key, value) in higher_to_lower if value >= threshold)
+    return list(islice(filtered, 0, max_count))
+
+
+def main(file1, others, threshold):
     if not path.exists(file1):
-        prnt_stderr("%r no existe!\n" % file1)
+        prnt_stderr('%r no existe!\n' % file1)
         exit(2)
 
     try:
@@ -64,43 +72,56 @@ def main(file1, others):
 
     all_images = (img for img in others if not are_versions_of_same(img, file1))
 
-    for file2 in all_images:
-        if not (path.exists(file1) and path.exists(file2)):
-            continue
-
+    for file2 in filter(lambda x: path.exists(file1) and path.exists(x), all_images):
         prnt_stderr('.')
-
         try:
             img2 = read_image(file2)
             n_0 = 1.0 - compare(img1, img2)
+            img_map[file2] = n_0
         except:
             prnt_stderr('!')
-            continue
-
-        img_map[file2] = n_0
 
     prnt_stderr('\n')
 
-    top_scores = list((key, value)
-        for (key, value) in reversed(sorted(img_map.items(), key=operator.itemgetter(1)))
-        if value >= _THRESHOLD)[:10]
-
-    for (key, value) in top_scores:
+    for (key, value) in get_top_scores(img_map, threshold, max_count=10):
         print '\t%-4.2f\t%s:' % (value, key)
 
-if __name__ == '__main__':
-    if len(sys.argv) <= 1:
-        prnt_stderr('%s <file1> [<file2>...]' % sys.argv[0])
+
+def without(seq, item):
+    return (curr for curr in seq if curr != item)
+
+
+def index_if(alist, pred):
+    gen = (i for i in xrange(0, len(alist)) if pred(alist[i]))
+    return next(gen, -1)
+
+
+def parse_args(argv):
+    (myproc, argv) = (argv[0], argv[1:])
+    if len(argv) < 1:
+        prnt_stderr('%s [-t:<threshold>] <file1> [<file2>...] [--among [<filen>...]]' % myproc)
         exit(1)
 
-    args = sys.argv[1:]
-    if ('--among' in args):
-        pos = args.index('--among')
-        others = args[pos:]
-        args = args[0:pos]
-    else:
-        others = sorted(glob('*.[JjPp][PpNn][Gg]'))
+    threshold = _DEFAULT_THRESHOLD
 
-    for arg in args:
-        main(arg, others)
+    pos = index_if(argv, lambda x: x.startswith('-t:'))
+    if pos >= 0:
+        threshold = float((argv[pos])[3:].strip())
+        del argv[pos]
+
+    if '--among' in argv:
+        pos = argv.index('--among')
+        del argv[pos]
+        others = argv[pos:]
+        argv = argv[0:pos]
+    else:
+        others = glob('*.[JjPp][PpNn][Gg]')
+
+    return dict(threshold=threshold, files_to_process=argv, search_set=sorted(others))
+
+
+if __name__ == '__main__':
+    args = parse_args(sys.argv[:])
+    for current in args['files_to_process']:
+        main(current, without(args['search_set'], current), args['threshold'])
         print ''
