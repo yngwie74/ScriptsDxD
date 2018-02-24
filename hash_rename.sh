@@ -49,28 +49,32 @@ function rename_if_needed() {
     fi
 }
 
+function process() {
+    local _filename="$1"
+#cho -e "(process)_filename:\t$_filename"
+    local _hash=`md5sum "$_filename" | sed \
+            -e 's/[a-f]*\([0-9]\+\)[a-f]*/\1/g' \
+            -e 's/^[0-9]*\([0-9]\{6\}\) .*$/\1/'`
+
+    local _suffix=${_hash}
+
+    local _newname=`sed -e "s/^\(.\+\)-\(.\+\)\.\([^.]\+\)$/\1-$_suffix.\3/" <<< "$_filename"`
+
+    rename_if_needed "$_filename" "$_newname"
+}
+
 function rename_files() {
     local _glob
     local _filename
-    local _hash
-    local _suffix
-    local _newname
     local i=0
-
     for _glob in "$@"; do
+#cho -e "_glob:\t$_glob"
         find . -maxdepth 1 -type f -name "$_glob"|while read _filename; do
-            _hash=`md5sum "$_filename" | sed \
-                -e 's/[a-f]*\([0-9]\+\)[a-f]*/\1/g' \
-                -e 's/^[0-9]*\([0-9]\{6\}\) .*$/\1/'`
+#cho -e "_filename:\t$_filename"
+            process "$_filename" &
 
-            _suffix=${_hash}
-
-            _newname=`sed -e "s/^\(.\+\)-\(.\+\)\.\([^.]\+\)$/\1-$_suffix.\3/" <<< "$_filename"`
-
-            rename_if_needed "$_filename" "$_newname" &
             let i=i+1
-
-            [[ $((i % 4)) -eq 0 ]] && wait
+            [[ $((i % 6)) -eq 0 ]] && wait
         done
         wait
     done
